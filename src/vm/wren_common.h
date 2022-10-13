@@ -88,7 +88,7 @@
 // The maximum name of a method, not including the signature. This is an
 // arbitrary but enforced maximum just so we know how long the method name
 // strings need to be in the parser.
-#define MAX_METHOD_NAME 64
+#define MAX_METHOD_NAME 128
 
 // The maximum length of a method signature. Signatures look like:
 //
