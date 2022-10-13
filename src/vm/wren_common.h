@@ -80,15 +80,16 @@
 // `CODE_LOAD_MODULE_VAR` and `CODE_STORE_MODULE_VAR`.
 #define MAX_MODULE_VARS 65536
 
-// The maximum number of arguments that can be passed to a method. Note that
-// this limitation is hardcoded in other places in the VM, in particular, the
-// `CODE_CALL_XX` instructions assume a certain maximum number.
-#define MAX_PARAMETERS 16
+// The maximum number of arguments that can be passed to a method.
+// When the number of parameters is superior to 16
+// a whole byte is used for passing the number of args,
+// making the max 254 + 1 (1 arg is reserved for the receiver)
+#define MAX_PARAMETERS 254
 
 // The maximum name of a method, not including the signature. This is an
 // arbitrary but enforced maximum just so we know how long the method name
 // strings need to be in the parser.
-#define MAX_METHOD_NAME 64
+#define MAX_METHOD_NAME 128
 
 // The maximum length of a method signature. Signatures look like:
 //
