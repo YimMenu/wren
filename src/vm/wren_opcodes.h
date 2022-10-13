@@ -96,6 +96,7 @@ OPCODE(CALL_13, -13)
 OPCODE(CALL_14, -14)
 OPCODE(CALL_15, -15)
 OPCODE(CALL_16, -16)
+OPCODE(CALL_17PLUS, -17)
 
 // Invoke a superclass method with symbol [arg]. The number indicates the
 // number of arguments (not including the receiver).
@@ -116,6 +117,7 @@ OPCODE(SUPER_13, -13)
 OPCODE(SUPER_14, -14)
 OPCODE(SUPER_15, -15)
 OPCODE(SUPER_16, -16)
+OPCODE(SUPER_17PLUS, -17)
 
 // Jump the instruction pointer [arg] forward.
 OPCODE(JUMP, 0)

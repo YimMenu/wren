@@ -1975,7 +1975,18 @@ static void callSignature(Compiler* compiler, Code instruction,
                           Signature* signature)
 {
   int symbol = signatureSymbol(compiler, signature);
-  emitShortArg(compiler, (Code)(instruction + signature->arity), symbol);
+  if (signature->arity > 16)
+  {
+    emitByteArg(compiler,
+                instruction == CODE_SUPER_0 ?
+                CODE_SUPER_17PLUS : CODE_CALL_17PLUS,
+                signature->arity);
+    emitShort(compiler, symbol);
+  }
+  else
+  {
+    emitShortArg(compiler, (Code)(instruction + signature->arity), symbol);
+  }
 
   if (instruction == CODE_SUPER_0)
   {
@@ -1996,7 +2007,15 @@ static void callMethod(Compiler* compiler, int numArgs, const char* name,
                        int length)
 {
   int symbol = methodSymbol(compiler, name, length);
-  emitShortArg(compiler, (Code)(CODE_CALL_0 + numArgs), symbol);
+  if (numArgs > 16)
+  {
+    emitByteArg(compiler, CODE_CALL_17PLUS, numArgs);
+    emitShort(compiler, symbol);
+  }
+  else
+  {
+    emitShortArg(compiler, (Code)(CODE_CALL_0 + numArgs), symbol);
+  }
 }
 
 // Compiles an (optional) argument list for a method call with [methodSignature]
@@ -2930,6 +2949,9 @@ static int getByteCountForArguments(const uint8_t* bytecode,
     case CODE_IMPORT_VARIABLE:
       return 2;
 
+    case CODE_CALL_17PLUS:
+      return 3;
+
     case CODE_SUPER_0:
     case CODE_SUPER_1:
     case CODE_SUPER_2:
@@ -2948,6 +2970,9 @@ static int getByteCountForArguments(const uint8_t* bytecode,
     case CODE_SUPER_15:
     case CODE_SUPER_16:
       return 4;
+
+    case CODE_SUPER_17PLUS:
+      return 5;
 
     case CODE_CLOSURE:
     {
@@ -3287,8 +3312,17 @@ static void createConstructor(Compiler* compiler, Signature* signature,
        ? CODE_FOREIGN_CONSTRUCT : CODE_CONSTRUCT);
   
   // Run its initializer.
-  emitShortArg(&methodCompiler, (Code)(CODE_CALL_0 + signature->arity),
-               initializerSymbol);
+  if (signature->arity > 16)
+  {
+    emitByteArg(&methodCompiler, (Code)(CODE_CALL_17PLUS),
+                signature->arity);
+    emitShort(&methodCompiler, initializerSymbol);
+  }
+  else
+  {
+    emitShortArg(&methodCompiler, (Code)(CODE_CALL_0 + signature->arity),
+                 initializerSymbol);
+  }
   
   // Return the instance.
   emitOp(&methodCompiler, CODE_RETURN);
@@ -3877,6 +3911,7 @@ void wrenBindMethodCode(ObjClass* classObj, ObjFn* fn)
       case CODE_SUPER_14:
       case CODE_SUPER_15:
       case CODE_SUPER_16:
+      case CODE_SUPER_17PLUS:
       {
         // Fill in the constant slot with a reference to the superclass.
         int constant = (fn->code.data[ip + 3] << 8) | fn->code.data[ip + 4];

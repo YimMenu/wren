@@ -998,12 +998,19 @@ static WrenInterpretResult runInterpreter(WrenVM* vm, register ObjFiber* fiber)
     CASE_CODE(CALL_16):
       // Add one for the implicit receiver argument.
       numArgs = instruction - CODE_CALL_0 + 1;
+
+      parseCall:
       symbol = READ_SHORT();
 
       // The receiver is the first argument.
       args = fiber->stackTop - numArgs;
       classObj = wrenGetClassInline(vm, args[0]);
       goto completeCall;
+
+    CASE_CODE(CALL_17PLUS):
+      // Add one for the implicit receiver argument.
+      numArgs = READ_BYTE() + 1;
+      goto parseCall;
 
     CASE_CODE(SUPER_0):
     CASE_CODE(SUPER_1):
@@ -1024,6 +1031,8 @@ static WrenInterpretResult runInterpreter(WrenVM* vm, register ObjFiber* fiber)
     CASE_CODE(SUPER_16):
       // Add one for the implicit receiver argument.
       numArgs = instruction - CODE_SUPER_0 + 1;
+
+      parseSuper:
       symbol = READ_SHORT();
 
       // The receiver is the first argument.
@@ -1032,6 +1041,11 @@ static WrenInterpretResult runInterpreter(WrenVM* vm, register ObjFiber* fiber)
       // The superclass is stored in a constant.
       classObj = AS_CLASS(fn->constants.data[READ_SHORT()]);
       goto completeCall;
+
+      CASE_CODE(SUPER_17PLUS):
+        // Add one for the implicit receiver argument.
+        numArgs = READ_BYTE() + 1;
+        goto parseSuper;
 
     completeCall:
       // If the class's method table doesn't include the symbol, bail.
@@ -1428,7 +1442,15 @@ WrenHandle* wrenMakeCallHandle(WrenVM* vm, const char* signature)
   WrenHandle* value = wrenMakeHandle(vm, OBJ_VAL(fn));
   value->value = OBJ_VAL(wrenNewClosure(vm, fn));
   
-  wrenByteBufferWrite(vm, &fn->code, (uint8_t)(CODE_CALL_0 + numParams));
+  if (numParams > 16)
+  {
+    wrenByteBufferWrite(vm, &fn->code, CODE_CALL_17PLUS);
+    wrenByteBufferWrite(vm, &fn->code, numParams);
+  }
+  else
+  {
+    wrenByteBufferWrite(vm, &fn->code, (uint8_t)(CODE_CALL_0 + numParams));
+  }
   wrenByteBufferWrite(vm, &fn->code, (method >> 8) & 0xff);
   wrenByteBufferWrite(vm, &fn->code, method & 0xff);
   wrenByteBufferWrite(vm, &fn->code, CODE_RETURN);
