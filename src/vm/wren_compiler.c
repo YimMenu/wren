@@ -3487,6 +3487,7 @@ static bool method(Compiler* compiler, Variable classVariable)
   }
   else
   {
+    ignoreNewlines(compiler);
     consume(compiler, TOKEN_LEFT_BRACE, "Expect '{' to begin method body.");
     finishBody(&methodCompiler);
     endCompiler(&methodCompiler, fullSignature, length);
@@ -3584,6 +3585,7 @@ static void classDefinition(Compiler* compiler, bool isForeign)
   compiler->enclosingClass = &classInfo;
 
   // Compile the method definitions.
+  ignoreNewlines(compiler);
   consume(compiler, TOKEN_LEFT_BRACE, "Expect '{' after class declaration.");
   matchLine(compiler);
 
