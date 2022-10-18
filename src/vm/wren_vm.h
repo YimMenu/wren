@@ -49,7 +49,7 @@ struct WrenVM
   // whose key is null) for the module's name and the value is the ObjModule
   // for the module.
   ObjMap* modules;
-  
+
   // The most recently imported module. More specifically, the module whose
   // code has most recently finished executing.
   //
@@ -57,6 +57,9 @@ struct WrenVM
   ObjModule* lastModule;
 
   // Memory management data:
+
+  // The lock that prevent garbage collection to re-enter.
+  bool lockGC;
 
   // The number of bytes that are known to be currently allocated. Includes all
   // memory that was proven live after the last GC, as well as any new bytes
@@ -85,11 +88,11 @@ struct WrenVM
   Obj* tempRoots[WREN_MAX_TEMP_ROOTS];
 
   int numTempRoots;
-  
+
   // Pointer to the first node in the linked list of active handles or NULL if
   // there are none.
   WrenHandle* handles;
-  
+
   // Pointer to the bottom of the range of stack slots available for use from
   // the C API. During a foreign method, this will be in the stack of the fiber
   // that is executing a method.
@@ -100,7 +103,7 @@ struct WrenVM
   Value* apiStack;
 
   WrenConfiguration config;
-  
+
   // Compiler and debugger data:
 
   // The compiler that is currently compiling code. This is used so that heap
@@ -186,12 +189,12 @@ static inline void wrenCallFunction(WrenVM* vm, ObjFiber* fiber,
         sizeof(CallFrame) * fiber->frameCapacity, sizeof(CallFrame) * max);
     fiber->frameCapacity = max;
   }
-  
+
   // Grow the stack if needed.
   int stackSize = (int)(fiber->stackTop - fiber->stack);
   int needed = stackSize + closure->fn->maxSlots;
   wrenEnsureStack(vm, fiber, needed);
-  
+
   wrenAppendCallFrame(vm, fiber, closure, fiber->stackTop - numArgs);
 }
 
