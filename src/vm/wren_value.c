@@ -150,14 +150,14 @@ ObjFiber* wrenNewFiber(WrenVM* vm, ObjClosure* closure)
 {
   // Allocate the arrays before the fiber in case it triggers a GC.
   CallFrame* frames = ALLOCATE_ARRAY(vm, CallFrame, INITIAL_CALL_FRAMES);
-  
+
   // Add one slot for the unused implicit receiver slot that the compiler
   // assumes all functions have.
   int stackCapacity = closure == NULL
-      ? 1
-      : wrenPowerOf2Ceil(closure->fn->maxSlots + 1);
+      ? 16
+      : wrenPowerOf2Ceil(closure->fn->maxSlots + 16);
   Value* stack = ALLOCATE_ARRAY(vm, Value, stackCapacity);
-  
+
   ObjFiber* fiber = ALLOCATE(vm, ObjFiber);
   initObj(vm, &fiber->obj, OBJ_FIBER, vm->fiberClass);
 
@@ -173,7 +173,7 @@ ObjFiber* wrenNewFiber(WrenVM* vm, ObjClosure* closure)
   fiber->caller = NULL;
   fiber->error = NULL_VAL;
   fiber->state = FIBER_OTHER;
-  
+
   if (closure != NULL)
   {
     // Initialize the first call frame.
@@ -183,22 +183,22 @@ ObjFiber* wrenNewFiber(WrenVM* vm, ObjClosure* closure)
     fiber->stackTop[0] = OBJ_VAL(closure);
     fiber->stackTop++;
   }
-  
+
   return fiber;
 }
 
 void wrenEnsureStack(WrenVM* vm, ObjFiber* fiber, int needed)
 {
   if (fiber->stackCapacity >= needed) return;
-  
+
   int capacity = wrenPowerOf2Ceil(needed);
-  
+
   Value* oldStack = fiber->stack;
   fiber->stack = (Value*)wrenReallocate(vm, fiber->stack,
                                         sizeof(Value) * fiber->stackCapacity,
                                         sizeof(Value) * capacity);
   fiber->stackCapacity = capacity;
-  
+
   // If the reallocation moves the stack, then we need to recalculate every
   // pointer that points into the old stack to into the same relative distance
   // in the new stack. We have to be a little careful about how these are
@@ -211,14 +211,14 @@ void wrenEnsureStack(WrenVM* vm, ObjFiber* fiber, int needed)
     {
       vm->apiStack = fiber->stack + (vm->apiStack - oldStack);
     }
-    
+
     // Stack pointer for each call frame.
     for (int i = 0; i < fiber->numFrames; i++)
     {
       CallFrame* frame = &fiber->frames[i];
       frame->stackStart = fiber->stack + (frame->stackStart - oldStack);
     }
-    
+
     // Open upvalues.
     for (ObjUpvalue* upvalue = fiber->openUpvalues;
          upvalue != NULL;
@@ -226,7 +226,7 @@ void wrenEnsureStack(WrenVM* vm, ObjFiber* fiber, int needed)
     {
       upvalue->value = fiber->stack + (upvalue->value - oldStack);
     }
-    
+
     fiber->stackTop = fiber->stack + (fiber->stackTop - oldStack);
   }
 }
@@ -249,7 +249,7 @@ ObjFn* wrenNewFunction(WrenVM* vm, ObjModule* module, int maxSlots)
 
   ObjFn* fn = ALLOCATE(vm, ObjFn);
   initObj(vm, &fn->obj, OBJ_FN, vm->fnClass);
-  
+
   wrenValueBufferInit(&fn->constants);
   wrenByteBufferInit(&fn->code);
   fn->module = module;
@@ -257,7 +257,7 @@ ObjFn* wrenNewFunction(WrenVM* vm, ObjModule* module, int maxSlots)
   fn->numUpvalues = 0;
   fn->arity = 0;
   fn->debug = debug;
-  
+
   return fn;
 }
 
@@ -399,7 +399,7 @@ static uint32_t hashObject(Obj* object)
     case OBJ_CLASS:
       // Classes just use their name.
       return hashObject((Obj*)((ObjClass*)object)->name);
-      
+
       // Allow bare (non-closure) functions so that we can use a map to find
       // existing constants in a function's constant table. This is only used
       // internally. Since user code never sees a non-closure function, they
@@ -446,7 +446,7 @@ static uint32_t hashValue(Value value)
     case VAL_OBJ:   return hashObject(AS_OBJ(value));
     default:        UNREACHABLE();
   }
-  
+
   return 0;
 #endif
 }
@@ -461,21 +461,21 @@ static bool findEntry(MapEntry* entries, uint32_t capacity, Value key,
 {
   // If there is no entry array (an empty map), we definitely won't find it.
   if (capacity == 0) return false;
-  
+
   // Figure out where to insert it in the table. Use open addressing and
   // basic linear probing.
   uint32_t startIndex = hashValue(key) % capacity;
   uint32_t index = startIndex;
-  
+
   // If we pass a tombstone and don't end up finding the key, its entry will
   // be re-used for the insert.
   MapEntry* tombstone = NULL;
-  
+
   // Walk the probe sequence until we've tried every slot.
   do
   {
     MapEntry* entry = &entries[index];
-    
+
     if (IS_UNDEFINED(entry->key))
     {
       // If we found an empty slot, the key is not in the table. If we found a
@@ -503,12 +503,12 @@ static bool findEntry(MapEntry* entries, uint32_t capacity, Value key,
       *result = entry;
       return true;
     }
-    
+
     // Try the next slot.
     index = (index + 1) % capacity;
   }
   while (index != startIndex);
-  
+
   // If we get here, the table is full of tombstones. Return the first one we
   // found.
   ASSERT(tombstone != NULL, "Map should have tombstones or empty entries.");
@@ -524,7 +524,7 @@ static bool insertEntry(MapEntry* entries, uint32_t capacity,
                         Value key, Value value)
 {
   ASSERT(entries != NULL, "Should ensure capacity before inserting.");
-  
+
   MapEntry* entry;
   if (findEntry(entries, capacity, key, &entry))
   {
@@ -557,7 +557,7 @@ static void resizeMap(WrenVM* vm, ObjMap* map, uint32_t capacity)
     for (uint32_t i = 0; i < map->capacity; i++)
     {
       MapEntry* entry = &map->entries[i];
-      
+
       // Don't copy empty entries or tombstones.
       if (IS_UNDEFINED(entry->key)) continue;
 
@@ -714,12 +714,12 @@ Value wrenNewStringLength(WrenVM* vm, const char* text, size_t length)
   // Allow NULL if the string is empty since byte buffers don't allocate any
   // characters for a zero-length string.
   ASSERT(length == 0 || text != NULL, "Unexpected NULL string.");
-  
+
   ObjString* string = allocateString(vm, length);
-  
+
   // Copy the string (if given one).
   if (length > 0 && text != NULL) memcpy(string->value, text, length);
-  
+
   hashString(string);
   return OBJ_VAL(string);
 }
@@ -1093,7 +1093,7 @@ static void blackenFn(WrenVM* vm, ObjFn* fn)
   vm->bytesAllocated += sizeof(ObjFn);
   vm->bytesAllocated += sizeof(uint8_t) * fn->code.capacity;
   vm->bytesAllocated += sizeof(Value) * fn->constants.capacity;
-  
+
   // The debug line number buffer.
   vm->bytesAllocated += sizeof(int) * fn->code.capacity;
   // TODO: What about the function name?
@@ -1244,7 +1244,7 @@ void wrenFreeObj(WrenVM* vm, Obj* obj)
       DEALLOCATE(vm, fiber->stack);
       break;
     }
-      
+
     case OBJ_FN:
     {
       ObjFn* fn = (ObjFn*)obj;
