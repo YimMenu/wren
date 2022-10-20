@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "wren_common.h"
 #include "wren_compiler.h"
@@ -3796,14 +3797,14 @@ void definition(Compiler* compiler)
 }
 
 // don't forget to free if return value is != NULL
-static char* strReplace(char* orig, char* rep, char* with)
+static char* strReplace(const char* orig, const char* rep, char* with)
 {
     char* result; // the return string
     char* ins;    // the next insert point
     char* tmp;    // varies
-    int len_rep;  // length of rep (the string to remove)
-    int len_with; // length of with (the string to replace rep with)
-    int len_front; // distance between rep and end of last rep
+    size_t len_rep;  // length of rep (the string to remove)
+    size_t len_with; // length of with (the string to replace rep with)
+    size_t len_front; // distance between rep and end of last rep
     int count;    // number of replacements
 
     // sanity checks and initialization
@@ -3818,7 +3819,7 @@ static char* strReplace(char* orig, char* rep, char* with)
     len_with = strlen(with);
 
     // count the number of replacements needed
-    ins = orig;
+    ins = (char*)orig;
     for (count = 0; tmp = strstr(ins, rep); ++count)
     {
         ins = tmp + len_rep;
@@ -3858,9 +3859,9 @@ static char* allocSource(const char* source)
 // example: var firstEl, secondEl, thirdEl = getListOfSize3()
 static const char* syntaxSugarSourceModifierListDeconstruct(const char* source)
 {
-    int compilerOnlyVariableListIndex = 0;
+    size_t compilerOnlyVariableListIndex = 0;
 
-    char* sourceIterator = source;
+    char* sourceIterator = (char*)source;
 
     while (*sourceIterator != '\0')
     {
@@ -3929,7 +3930,7 @@ static const char* syntaxSugarSourceModifierListDeconstruct(const char* source)
         memset(varName, 0, MAX_VARIABLE_NAME);
         char* varNameIterator = varName;
         char* lineIterator = beginOfLine + varDeclarationSize;
-        while (lineIterator != '=')
+        while (true)
         {
             if (*lineIterator == ',' ||
                 *lineIterator == '=')
@@ -3965,20 +3966,20 @@ static const char* syntaxSugarSourceModifierListDeconstruct(const char* source)
         {
             endOfLine++;
         }
-        int offsetToEndOfLineFromStart = endOfLine - source;
-        int lengthOfRightHandSide = endOfLine - (endOfLeftHandSide + 1);
-        int lengthOfLine = endOfLine - beginOfLine;
+        size_t offsetToEndOfLineFromStart = endOfLine - source;
+        int lengthOfRightHandSide = (int)(endOfLine - (endOfLeftHandSide + 1));
+        size_t lengthOfLine = endOfLine - beginOfLine;
 
-        int lengthOfLeftHandSide = endOfLeftHandSide - beginOfLine;
+        size_t lengthOfLeftHandSide = endOfLeftHandSide - beginOfLine;
         char* originalLine = malloc(lengthOfLine + 1);
         memcpy(originalLine, beginOfLine, lengthOfLine);
         originalLine[lengthOfLine] = 0;
 
         char listVarName[4096];
-        sprintf(listVarName, "var COMPILE_GENERATED_LIST_TUPLE_%d = %.*s\n", compilerOnlyVariableListIndex, lengthOfRightHandSide, (endOfLeftHandSide + 1));
-        for (int i = 0; i < varCount; i++)
+        sprintf(listVarName, "var COMPILE_GENERATED_LIST_TUPLE_%zd = %.*s\n", compilerOnlyVariableListIndex, lengthOfRightHandSide, (endOfLeftHandSide + 1));
+        for (size_t i = 0; i < varCount; i++)
         {
-            sprintf(listVarName, "%svar %s = COMPILE_GENERATED_LIST_TUPLE_%d[%d]\n", listVarName, varNames[i], compilerOnlyVariableListIndex, i);
+            sprintf(listVarName, "%svar %s = COMPILE_GENERATED_LIST_TUPLE_%zd[%zd]\n", listVarName, varNames[i], compilerOnlyVariableListIndex, i);
             free(varNames[i]);
         }
         compilerOnlyVariableListIndex++;
@@ -3989,9 +3990,9 @@ static const char* syntaxSugarSourceModifierListDeconstruct(const char* source)
         {
             goto END;
         }
-        free(source);
+        free((void*)source);
         source = replacedSource;
-        sourceIterator = source + offsetToEndOfLineFromStart;
+        sourceIterator = (char*)source + offsetToEndOfLineFromStart;
 
 
     END:
@@ -4090,7 +4091,7 @@ ObjFn* wrenCompile(WrenVM* vm, ObjModule* module, const char* source,
     }
   }
 
-  free(source);
+  free((void*)source);
 
   return endCompiler(&compiler, "(script)", 8);
 }
