@@ -3856,7 +3856,7 @@ static char* allocSource(const char* source)
 }
 
 // example: var firstEl, secondEl, thirdEl = getListOfSize3()
-static void syntaxSugarSourceModifierListDeconstruct(const char* source)
+static const char* syntaxSugarSourceModifierListDeconstruct(const char* source)
 {
     int compilerOnlyVariableListIndex = 0;
 
@@ -3997,13 +3997,15 @@ static void syntaxSugarSourceModifierListDeconstruct(const char* source)
     END:
         sourceIterator++;
     }
+
+    return source;
 }
 
 // Modify the source file for applying some syntax sugar
 // Ideally this should be done with the more classical parser
-static void syntaxSugarSourceModifier(const char* source)
+static const char* syntaxSugarSourceModifier(const char* source)
 {
-    syntaxSugarSourceModifierListDeconstruct(source);
+    return syntaxSugarSourceModifierListDeconstruct(source);
 }
 
 ObjFn* wrenCompile(WrenVM* vm, ObjModule* module, const char* source,
@@ -4011,7 +4013,7 @@ ObjFn* wrenCompile(WrenVM* vm, ObjModule* module, const char* source,
 {
     source = allocSource(source);
 
-    syntaxSugarSourceModifier(source);
+    source = syntaxSugarSourceModifier(source);
 
   // Skip the UTF-8 BOM if there is one.
   if (strncmp(source, "\xEF\xBB\xBF", 3) == 0) source += 3;
