@@ -1,5 +1,5 @@
 class Foo {
-  thisIsAMethodNameThatExceedsTheMaximumNameLengthOf64CharactersBy1 { // expect error
+  thisIsAMethodNameThatExceedsTheMaximumNameLengthOf128CharactersBy1WellOnlyAfterIFinishThisExtremelyLongSentneceWhichShouldBeError { // expect error
     "body"
   }
 }
