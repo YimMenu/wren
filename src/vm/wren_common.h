@@ -185,31 +185,8 @@
 
 #else
 
-  //#define ASSERT(condition, message) do { } while (false)
-#include <stdio.h>
-#include <stdlib.h>
-#define ASSERT(condition, message)                                                                      \
-      do                                                                                                \
-      {                                                                                                 \
-        if (!(condition))                                                                               \
-        {                                                                                               \
-          char file_path[_MAX_PATH];                                                                    \
-          char* app_data_path = getenv("appdata");                                                      \
-          if (app_data_path)                                                                            \
-          {                                                                                             \
-                strcpy(file_path, app_data_path);                                                       \
-                strcat(file_path, "/BigBaseV2/wren_debug.txt");                                         \
-                FILE* fldeb = fopen(file_path, "a");                                                    \
-                if (fldeb)                                                                              \
-                {                                                                                       \
-                    fprintf(fldeb, "[%s:%d] Assert failed in %s(): %s\n",                               \
-                        __FILE__, __LINE__, __func__, message);                                         \
-                    fclose(fldeb);                                                                      \
-                }                                                                                       \
-          }                                                                                             \
-          abort();                                                                                      \
-        }                                                                                               \
-      } while (false)
+  #define ASSERT(condition, message) do { } while (false)
+
 
   // Tell the compiler that this part of the code will never be reached.
   #if defined( _MSC_VER )
